@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+scikit-learn==1.5.1
+numpy
+pandas
+#tensorflow-lite = TensorFlow Lite n'est pas disponible via pip, il faut l'installer autrement
+tensorflow
+
+#Biblothèques supplémentaires
+pydantic
+joblib
+psycopg2-binary
+SQLAlchemy
+python-dotenv

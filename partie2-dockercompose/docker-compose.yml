@@ -1,0 +1,143 @@
+version: "3.9"
+
+# Déclaration de tous les services de l'application
+services:
+
+  backend:
+    # Chemin vers le Dockerfile du backend (Partie 1)
+    build: ../partie1-docker-dockerfile/backend
+
+    environment:
+      DATABASE_URL: postgresql://bd_user:password123@postgres:5432/bd_manchot
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
+    # Nom explicite du conteneur
+    container_name: backend-api
+
+    # Mapping du port conteneur vers la machine hôte
+    ports:
+      - "8000:8000"
+
+    # Chargement des variables d'environnement depuis un fichier .env
+    env_file:
+      - .env
+
+    # Dépendances de démarrage du service backend
+    depends_on:
+      # Le backend attend que PostgreSQL soit en bonne santé
+      postgres:
+        condition: service_healthy
+      # Le backend attend que Redis soit démarré
+      redis:
+        condition: service_started
+
+    # Volumes montés dans le conteneur backend
+    volumes:
+      # Volume dédié pour stocker les modèles ML pré-entraînés
+      - ml_models:/app/models
+
+    # Connexion du backend au réseau backend
+    networks:
+      - backend-net
+
+    # Limitation des ressources pour éviter la surconsommation
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"      # Limite CPU à 0.5 cœur
+          memory: 512M      # Limite mémoire à 512 Mo
+
+    # Vérification de l'état de santé de l'API
+    healthcheck:
+      # Test HTTP sur l'endpoint /health
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8000/health || exit 1"]
+      interval: 30s        # Intervalle entre deux checks
+      timeout: 10s          # Délai maximal pour répondre
+      retries: 3           # Nombre d'échecs avant état unhealthy
+      start_period: 30s   # Délai avant de commencer les checks (le temps que l'API démarre)
+
+  frontend:
+    # Build de l'image frontend (Vue + Nginx)
+    build: ../partie1-docker-dockerfile/frontend
+
+    # Nom du conteneur frontend
+    container_name: frontend-web
+
+    environment:
+      BACKEND_HOST: backend
+     # - VITE_API_URL=http://backend:8000
+
+    # Exposition du frontend sur le port 3000 de la machine
+    ports:
+      - "3000:80"
+
+    # Connexion uniquement au réseau frontend (isolation)
+    networks:
+      - frontend-net
+      - backend-net
+
+    # Limitation des ressources pour le frontend
+    deploy:
+      resources:
+        limits:
+          cpus: "0.25"      # Limite CPU plus faible
+          memory: 256M      # Limite mémoire à 256 Mo
+
+
+  postgres:
+    # Image officielle PostgreSQL
+    image: postgres:15-alpine
+
+    # Nom du conteneur PostgreSQL
+    container_name: postgres-db
+
+    # Chargement des variables d'environnement (DB, user, password)
+    env_file:
+      - .env
+
+    # Volumes montés pour la persistance et les sauvegardes
+    volumes:
+      # Volume persistant pour les données PostgreSQL
+      - pgdata:/var/lib/postgresql/data
+      # Dossier local pour les sauvegardes
+      - ./backup:/backup
+
+    # Connexion au réseau backend uniquement
+    networks:
+      - backend-net
+
+    # Healthcheck pour vérifier que PostgreSQL est prêt
+    healthcheck:
+      # Commande de test PostgreSQL
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER  -d $POSTGRES_DB"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    # Image Redis légère
+    image: redis:alpine
+
+    # Nom du conteneur Redis
+    container_name: redis-cache
+
+    # Connexion au réseau backend
+    networks:
+      - backend-net
+
+volumes:
+  # Volume persistant pour PostgreSQL
+  pgdata:
+
+  # Volume pour stocker les modèles ML
+  ml_models:
+
+networks:
+  # Réseau frontend isolé
+  frontend-net:
+    driver: bridge
+
+  # Réseau backend isolé (API, DB, Redis)
+  backend-net:
+    driver: bridge
