@@ -56,7 +56,7 @@ jobs:
           docker push fredogado/backend:latest
           docker push fredogado/frontend:latest
 
-      # ⚠️ À activer plus tard (kubectl + kubeconfig)
+      # On va activer plus tard (kubectl + kubeconfig)
       # - name: Deploy to Kubernetes
       #   run: |
       #     kubectl apply -f k8s/
