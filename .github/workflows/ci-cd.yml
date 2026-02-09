@@ -33,15 +33,15 @@ jobs:
 
       - name: Build Docker images
         run: |
-          docker build -t my-backend:latest backend/
-          docker build -t my-frontend:latest frontend/
+          docker build -t backend:latest backend/
+          docker build -t frontend:latest frontend/
 
       - name: Push Docker images
         run: |
-          docker tag my-backend:latest mydockerhubuser/my-backend:latest
-          docker tag my-frontend:latest mydockerhubuser/my-frontend:latest
-          docker push mydockerhubuser/my-backend:latest
-          docker push mydockerhubuser/my-frontend:latest
+          docker tag backend:latest fredogado/backend:latest
+          docker tag frontend:latest fredogado/frontend:latest
+          docker push fredogado/backend:latest
+          docker push fredogado/frontend:latest
 
       - name: Deploy to Kubernetes
         run: |
