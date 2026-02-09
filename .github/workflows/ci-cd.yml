@@ -1,0 +1,48 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install backend dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Test backend
+        run: pytest backend/tests
+
+      - name: Build frontend
+        run: |
+          cd frontend
+          npm install
+          npm run build
+
+      - name: Build Docker images
+        run: |
+          docker build -t my-backend:latest backend/
+          docker build -t my-frontend:latest frontend/
+
+      - name: Push Docker images
+        run: |
+          docker tag my-backend:latest mydockerhubuser/my-backend:latest
+          docker tag my-frontend:latest mydockerhubuser/my-frontend:latest
+          docker push mydockerhubuser/my-backend:latest
+          docker push mydockerhubuser/my-frontend:latest
+
+      - name: Deploy to Kubernetes
+        run: |
+          kubectl apply -f k8s/
